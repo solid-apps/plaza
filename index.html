@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>plaza</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/xlogin"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>plaza</h1>
+      <span class="sub">group chat on the open web</span>
+      <span class="status-dot" id="ws-status" title="connecting…"></span>
+      <span class="topbar-id" id="topbar-id" hidden></span>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="room-bar">
+      <div class="room-host" id="room-host">—</div>
+      <div class="room-count" id="room-count">0 messages</div>
+    </section>
+
+    <section class="thread" id="thread">
+      <div class="thread-empty" id="thread-empty">
+        <div class="thread-empty-inner">
+          <strong>Welcome to plaza.</strong>
+          <p>This is the group chat for this pod. Anyone who can read here will see messages; logged-in users can post.</p>
+        </div>
+      </div>
+      <ol class="messages" id="messages"></ol>
+    </section>
+
+    <section class="composer" id="composer">
+      <textarea
+        id="composer-input"
+        class="composer-input"
+        placeholder="Write something…"
+        rows="1"
+        autocomplete="off"
+        spellcheck="true"
+      ></textarea>
+      <button class="composer-send" id="composer-send" title="Send (Enter)" disabled>Send</button>
+    </section>
+
+  </main>
+
+  <div class="toast" id="toast" hidden>
+    <span class="toast-msg" id="toast-msg"></span>
+    <button class="toast-close" id="toast-close" title="Dismiss">×</button>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
