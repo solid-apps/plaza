@@ -176,11 +176,10 @@ async function ensurePlaza(plazaUrl) {
 async function loadMessages() {
   const r = await authFetch(state.plazaUrl, { headers: { Accept: 'application/ld+json' } })
   if (!r.ok) {
-    if (r.status === 404 && meWebId()) {
-      // Empty pod, plaza doesn't exist yet
-      await ensurePlaza(state.plazaUrl).catch(() => {})
-      return []
-    }
+    // 404 means the plaza container doesn't exist yet — that's a resting
+    // state, not an error. The empty-state UI explains the next move
+    // (log in + post creates the container via ensurePlaza on first PUT).
+    if (r.status === 404) return []
     throw new Error(`load plaza: ${r.status}`)
   }
   const doc = await r.json()
@@ -287,6 +286,7 @@ function renderThread() {
   const listEl = document.getElementById('messages')
   const emptyEl = document.getElementById('thread-empty')
   emptyEl.hidden = state.messages.length > 0
+  if (!emptyEl.hidden) updateEmptyState()
   document.getElementById('room-count').textContent =
     `${state.messages.length} message${state.messages.length === 1 ? '' : 's'}`
 
@@ -474,6 +474,25 @@ function renderIdentity() {
   // Refresh send-button enabled state
   const inp = document.getElementById('composer-input')
   document.getElementById('composer-send').disabled = !inp.value.trim() || !id
+  // Re-evaluate empty-state copy when login changes
+  updateEmptyState()
+}
+
+function updateEmptyState() {
+  const title = document.getElementById('empty-title')
+  const body = document.getElementById('empty-body')
+  if (!title || !body) return
+  const loggedIn = !!meWebId()
+  const host = (() => {
+    try { return new URL(state.plazaUrl || '').host } catch { return 'this pod' }
+  })()
+  if (loggedIn) {
+    title.textContent = 'Welcome to plaza.'
+    body.textContent = `No messages yet on ${host}. Write something below to start the conversation.`
+  } else {
+    title.textContent = 'Welcome to plaza.'
+    body.textContent = `Log in (top-right) to start the plaza on ${host}. Once posted, anyone with read access here can follow along.`
+  }
 }
 
 function watchLogin() {
@@ -554,6 +573,9 @@ async function bootForPod(origin) {
   } catch (e) {
     showToast(`Couldn't load plaza: ${e.message}`, 6000)
   }
+  // Make sure empty-state copy interpolates the now-known host even if
+  // there were zero messages and renderThread didn't recompute it.
+  updateEmptyState()
   openSubscription()
 }
 
