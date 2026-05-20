@@ -26,7 +26,9 @@ const state = {
   byUrl: new Map(),       // url → index in messages
   ws: null,
   wsReady: false,
-  profiles: new Map(),    // webId → { name, picture } (lazy)
+  profiles: new Map(),    // webId → { name, picture, bio } (lazy)
+  plazaOwner: null,       // owner's WebID (resolved from the pod profile)
+  plazaOwnerProfile: null,// { name, picture, bio } for the pod owner
   scrollPinned: true      // auto-scroll to bottom unless user scrolled up
 }
 
@@ -136,7 +138,7 @@ function parseProfile(doc, webId) {
   // Walk the doc for any node matching webId (with or without fragment), pull name + image
   const nodes = doc['@graph'] ? (Array.isArray(doc['@graph']) ? doc['@graph'] : [doc['@graph']]) : [doc]
   const target = nodes.find(n => n['@id'] === webId || n['@id'] === '#' + (webId.split('#')[1] || '') || n['@id'] === webId.split('#').pop()) || nodes[0]
-  if (!target) return { name: hostLabel(webId), picture: null }
+  if (!target) return { name: hostLabel(webId), picture: null, bio: null }
   const name =
     target['foaf:name'] || target[FOAF + 'name'] ||
     target['schema:name'] || target[SCHEMA + 'name'] ||
@@ -147,7 +149,51 @@ function parseProfile(doc, webId) {
     target['schema:image'] || target[SCHEMA + 'image'] ||
     target['image'] || null
   const picture = typeof pic === 'string' ? pic : (pic && pic['@id']) || null
-  return { name: String(name || hostLabel(webId)), picture }
+  const bio =
+    target['schema:description'] || target[SCHEMA + 'description'] ||
+    target['description'] || target['foaf:bio'] || target[FOAF + 'bio'] || null
+  return {
+    name: String(name || hostLabel(webId)),
+    picture,
+    bio: typeof bio === 'string' ? bio : null
+  }
+}
+
+async function discoverPlazaOwner(origin) {
+  if (!origin) return null
+  const guess = origin.replace(/\/$/, '') + '/profile/card.jsonld#me'
+  try {
+    const r = await fetch(guess.split('#')[0], { headers: { Accept: 'application/ld+json' } })
+    if (r.ok) return guess
+  } catch {}
+  return null
+}
+
+function renderMasthead() {
+  const nameEl = document.getElementById('brand-name')
+  const subEl = document.getElementById('sub')
+  const markEl = document.getElementById('brand-mark')
+  if (!nameEl || !subEl || !markEl) return
+  const p = state.plazaOwnerProfile
+  if (p?.name) {
+    const ending = p.name.endsWith('s') ? "'" : "'s"
+    nameEl.textContent = p.name + ending + ' plaza'
+    subEl.textContent = p.bio || 'group chat on the open web'
+    if (p.picture) {
+      markEl.innerHTML = `<img alt="" src="${escapeHtml(p.picture)}" referrerpolicy="no-referrer">`
+      markEl.classList.add('has-picture')
+    } else {
+      markEl.textContent = (p.name[0] || '▣').toUpperCase()
+      markEl.classList.remove('has-picture')
+    }
+    document.title = `${p.name}'s plaza`
+  } else {
+    nameEl.textContent = 'plaza'
+    subEl.textContent = 'group chat on the open web'
+    markEl.textContent = '▣'
+    markEl.classList.remove('has-picture')
+    document.title = 'plaza'
+  }
 }
 
 // --- plaza container ---
@@ -757,14 +803,41 @@ async function bootForPod(origin) {
   if (!origin) return
   state.podOrigin = origin
   state.plazaUrl = origin + PLAZA_PATH
+  state.plazaOwner = null
+  state.plazaOwnerProfile = null
+  renderMasthead()  // reset to defaults before discovery completes
   try { localStorage.setItem(LS_LAST_POD, origin) } catch {}
   document.getElementById('room-host').textContent = state.plazaUrl
+
+  // Kick off pod-owner discovery in the background — the masthead
+  // morphs into "alice's plaza" with her avatar once it resolves.
+  discoverPlazaOwner(origin).then(async (webId) => {
+    if (!webId || state.podOrigin !== origin) return
+    state.plazaOwner = webId
+    const profile = await fetchProfile(webId)
+    if (state.podOrigin !== origin) return  // pod changed mid-flight
+    state.plazaOwnerProfile = profile
+    renderMasthead()
+  })
 
   try {
     const msgs = await loadMessages()
     state.messages = msgs
     state.byUrl = new Map(msgs.map(m => [m.url, m]))
     renderThread()
+    // If owner discovery failed but messages exist, infer the owner
+    // from the first message's sender (they likely created the plaza).
+    if (!state.plazaOwner && msgs.length > 0 && msgs[0].sender) {
+      const guess = msgs[0].sender
+      if (podFromWebId(guess) === origin) {
+        state.plazaOwner = guess
+        fetchProfile(guess).then(p => {
+          if (state.podOrigin !== origin) return
+          state.plazaOwnerProfile = p
+          renderMasthead()
+        })
+      }
+    }
   } catch (e) {
     showToast(`Couldn't load plaza: ${e.message}`, 6000)
   }

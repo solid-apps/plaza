@@ -74,6 +74,23 @@ button { cursor: pointer; }
   letter-spacing: -0.015em;
   color: var(--text);
 }
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+  align-self: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.brand-mark.has-picture { border-radius: 50%; background: transparent; }
 .sub {
   font-size: 11.5px;
   color: var(--text-muted);
