@@ -460,8 +460,7 @@ function renderThread() {
   const emptyEl = document.getElementById('thread-empty')
   emptyEl.hidden = state.messages.length > 0
   if (!emptyEl.hidden) updateEmptyState()
-  document.getElementById('room-count').textContent =
-    `${state.messages.length} message${state.messages.length === 1 ? '' : 's'}`
+  document.getElementById('room-count').textContent = String(state.messages.length)
 
   // Re-render from scratch — keep it simple; messages are small
   const prevScroll = listEl.scrollHeight - listEl.scrollTop

@@ -10,23 +10,48 @@
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="topbar-inner">
-      <span class="brand-mark" id="brand-mark" aria-hidden="true">▣</span>
-      <h1 id="brand-name">plaza</h1>
-      <span class="sub" id="sub">group chat on the open web</span>
-      <span class="status-dot" id="ws-status" title="connecting…"></span>
-      <span class="topbar-id" id="topbar-id" hidden></span>
+  <!-- Pod rail: pods the user has visited. Hardcoded shells for now. -->
+  <aside class="rail">
+    <div class="rail-pod active" id="brand-mark" title="this pod">▣</div>
+    <div class="rail-divider"></div>
+    <div class="rail-add" title="Visit another pod (coming soon)">+</div>
+  </aside>
+
+  <!-- Channel sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-pod-name">
+        <span class="status-dot" id="ws-status" title="connecting…"></span>
+        <span id="brand-name">plaza</span>
+      </div>
+      <div class="sb-pod-host" id="sub">group chat on the open web</div>
     </div>
-  </header>
 
-  <main>
+    <div class="sb-section">
+      <div class="sb-section-title">Channels</div>
+      <ul class="sb-list">
+        <li class="sb-item active"><span class="glyph">#</span>general</li>
+      </ul>
+    </div>
 
-    <section class="room-bar">
-      <div class="room-host" id="room-host">—</div>
-      <button class="room-toggle" id="room-toggle" hidden title="Toggle whether logged-in users from any pod can post here">Chat: …</button>
-      <div class="room-count" id="room-count">0 messages</div>
-    </section>
+    <div class="sb-foot">
+      <button class="topbar-id" id="topbar-id" type="button">Log in</button>
+    </div>
+  </aside>
+
+  <!-- Main: channel header + messages + composer -->
+  <main class="main">
+    <header class="ch-header">
+      <div class="ch-title"><span class="glyph">#</span>general</div>
+      <div class="ch-topic" id="room-host">Town square for this pod · anyone with read access can follow</div>
+      <div class="ch-actions">
+        <span class="ch-members"><span aria-hidden="true">👥</span> <span id="room-count">0</span></span>
+        <button class="ch-action" title="Pinned">📌</button>
+        <button class="ch-action" title="Files">📎</button>
+        <input class="ch-search" type="search" placeholder="Search messages…">
+        <button class="room-toggle" id="room-toggle" hidden title="Toggle whether logged-in users from any pod can post here">Chat: …</button>
+      </div>
+    </header>
 
     <section class="thread" id="thread">
       <div class="thread-empty" id="thread-empty">
@@ -49,7 +74,6 @@
       ></textarea>
       <button class="composer-send" id="composer-send" title="Send (Enter)" disabled>Send</button>
     </section>
-
   </main>
 
   <div class="toast" id="toast" hidden>

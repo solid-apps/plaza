@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>plaza — mockup</title>
+<style>
+  :root {
+    --bg: #f9f7fc;
+    --rail-bg: #2a1f4a;
+    --rail-hover: #3a2b62;
+    --sidebar-bg: #2f254f;
+    --sidebar-fg: #cbc2e6;
+    --sidebar-fg-dim: #8a82a8;
+    --sidebar-active: rgba(124, 77, 255, 0.28);
+    --sidebar-hover: rgba(255, 255, 255, 0.06);
+    --surface: #ffffff;
+    --rule: rgba(35, 27, 56, 0.08);
+    --text: #1f1a2e;
+    --text-soft: #5d566f;
+    --text-muted: #9c95ad;
+    --accent: #7c4dff;
+    --accent-deep: #5a2be0;
+    --accent-soft: #ede5ff;
+    --ok: #2fa66a;
+    --type-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: var(--type-ui); color: var(--text); font-size: 14px; }
+  body {
+    display: grid;
+    grid-template-columns: 60px 240px 1fr;
+    height: 100vh;
+    background: var(--bg);
+  }
+
+  /* ---------- left rail (pods) ---------- */
+  .rail {
+    background: var(--rail-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0;
+    gap: 8px;
+  }
+  .rail-pod {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: #5a30d6;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+    transition: border-radius 140ms ease, background 140ms ease;
+  }
+  .rail-pod:hover { border-radius: 10px; background: var(--accent); }
+  .rail-pod.active::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 6px; bottom: 6px;
+    width: 4px;
+    background: #fff;
+    border-radius: 0 4px 4px 0;
+  }
+  .rail-pod.active { border-radius: 10px; background: var(--accent); }
+  .rail-divider { height: 1px; width: 32px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+  .rail-add {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    color: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    transition: background 120ms ease, border-radius 120ms ease;
+  }
+  .rail-add:hover { background: rgba(255,255,255,0.12); border-radius: 10px; }
+
+  /* ---------- channel sidebar ---------- */
+  .sidebar {
+    background: var(--sidebar-bg);
+    color: var(--sidebar-fg);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .sb-header {
+    padding: 18px 18px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .sb-pod-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sb-pod-host {
+    font-size: 11px;
+    color: var(--sidebar-fg-dim);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sb-status {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    display: inline-block;
+  }
+
+  .sb-section {
+    padding: 16px 0 6px;
+  }
+  .sb-section-title {
+    padding: 0 18px 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--sidebar-fg-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sb-section-title .add {
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.7;
+  }
+  .sb-section-title .add:hover { opacity: 1; }
+  .sb-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .sb-item {
+    padding: 5px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--sidebar-fg);
+    transition: background 80ms ease;
+    line-height: 1.4;
+  }
+  .sb-item:hover { background: var(--sidebar-hover); }
+  .sb-item.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+  .sb-item.unread { color: #fff; font-weight: 600; }
+  .sb-item .glyph {
+    display: inline-block;
+    width: 18px;
+    text-align: center;
+    color: var(--sidebar-fg-dim);
+    font-weight: 400;
+  }
+  .sb-item.active .glyph,
+  .sb-item.unread .glyph { color: var(--accent-soft); }
+  .sb-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .sb-presence {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    display: inline-block;
+  }
+  .sb-presence.away { background: #b59a00; }
+  .sb-presence.off  { background: transparent; border: 1px solid var(--sidebar-fg-dim); }
+
+  .sb-foot {
+    margin-top: auto;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .sb-foot-av {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .sb-foot-name {
+    color: #fff;
+    font-weight: 600;
+  }
+  .sb-foot-status {
+    color: var(--sidebar-fg-dim);
+    font-size: 11px;
+  }
+
+  /* ---------- main column ---------- */
+  .main {
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .ch-header {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+  .ch-title {
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ch-title .glyph { color: var(--text-muted); margin-right: 2px; }
+  .ch-topic {
+    color: var(--text-muted);
+    font-size: 13px;
+    border-left: 1px solid var(--rule);
+    padding-left: 14px;
+  }
+  .ch-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    color: var(--text-muted);
+  }
+  .ch-action {
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    transition: background 100ms ease;
+  }
+  .ch-action:hover { background: var(--accent-soft); color: var(--accent-deep); }
+  .ch-members {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .ch-search {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    width: 200px;
+    color: var(--text);
+  }
+
+  .ch-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+  .day-divider {
+    display: flex;
+    align-items: center;
+    margin: 18px 24px 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    gap: 16px;
+  }
+  .day-divider::before, .day-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .msg {
+    padding: 4px 24px;
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+    position: relative;
+    transition: background 100ms ease;
+  }
+  .msg:hover { background: var(--accent-soft); }
+  .msg-av {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .msg-author { font-weight: 700; color: var(--text); margin-right: 6px; }
+  .msg-time  { color: var(--text-muted); font-size: 11px; }
+  .msg-body  { color: var(--text); line-height: 1.45; }
+  .msg.compact {
+    grid-template-columns: 36px 1fr;
+    padding-top: 2px; padding-bottom: 2px;
+  }
+  .msg.compact .msg-av { background: transparent; color: transparent; }
+  .msg.compact:hover .msg-av {
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .msg.compact:hover .msg-av::after { content: attr(data-time); }
+  .msg-tool {
+    position: absolute;
+    top: -14px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    display: flex;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .msg:hover .msg-tool { opacity: 1; pointer-events: auto; }
+  .msg-tool button {
+    background: transparent;
+    border: 0;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .msg-tool button:hover { color: var(--accent-deep); background: var(--accent-soft); }
+  .msg-tool button:first-child { border-radius: 8px 0 0 8px; }
+  .msg-tool button:last-child  { border-radius: 0 8px 8px 0; }
+
+  .reactions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .react-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .react-chip:hover { border-color: var(--accent); }
+
+  .thread-link {
+    margin-top: 4px;
+    color: var(--accent-deep);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .thread-link::before {
+    content: '';
+    display: inline-block;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+  }
+  .thread-link:hover { text-decoration: underline; }
+
+  .composer {
+    padding: 8px 24px 20px;
+  }
+  .composer-inner {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  }
+  .composer-toolbar {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .composer-toolbar button {
+    background: transparent;
+    border: 0;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: inherit;
+    border-radius: 4px;
+  }
+  .composer-toolbar button:hover { background: var(--accent-soft); color: var(--accent-deep); }
+  .composer-textarea {
+    width: 100%;
+    border: 0;
+    outline: none;
+    resize: none;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    background: transparent;
+    color: var(--text);
+    min-height: 44px;
+  }
+  .composer-textarea::placeholder { color: var(--text-muted); }
+  .composer-footer {
+    padding: 6px 10px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+  }
+  .composer-send {
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .composer-send:hover { background: var(--accent-deep); }
+
+  /* ---------- mock content highlights ---------- */
+  .mention { color: var(--accent-deep); background: var(--accent-soft); padding: 0 4px; border-radius: 4px; font-weight: 600; }
+  code.inline {
+    background: rgba(124,77,255,0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+    font-size: 13px;
+    color: #5a2be0;
+    border: 1px solid rgba(124,77,255,0.12);
+  }
+
+</style>
+</head>
+<body>
+
+  <!-- LEFT RAIL: pods you frequent -->
+  <aside class="rail">
+    <div class="rail-pod active" title="nostr.solid.social">N</div>
+    <div class="rail-pod" style="background:#d97757" title="alice.solidcommunity.net">A</div>
+    <div class="rail-pod" style="background:#2fa66a" title="bob.solidweb.org">B</div>
+    <div class="rail-pod" style="background:#1f8fff" title="team.example.com">T</div>
+    <div class="rail-divider"></div>
+    <div class="rail-add" title="Add a pod">+</div>
+  </aside>
+
+  <!-- CHANNEL SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-pod-name">
+        <span class="sb-status"></span>
+        solid nostr's plaza
+      </div>
+      <div class="sb-pod-host">nostr.solid.social</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-section-title">Channels <span class="add">+</span></div>
+      <ul class="sb-list">
+        <li class="sb-item active"><span class="glyph">#</span>general</li>
+        <li class="sb-item unread"><span class="glyph">#</span>dev<span class="sb-badge">3</span></li>
+        <li class="sb-item"><span class="glyph">#</span>design</li>
+        <li class="sb-item"><span class="glyph">#</span>random</li>
+        <li class="sb-item"><span class="glyph">🔒</span>private-alpha</li>
+      </ul>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-section-title">Direct messages <span class="add">+</span></div>
+      <ul class="sb-list">
+        <li class="sb-item unread">
+          <span class="sb-presence"></span>alice<span class="sb-badge">1</span>
+        </li>
+        <li class="sb-item">
+          <span class="sb-presence away"></span>bob
+        </li>
+        <li class="sb-item">
+          <span class="sb-presence off"></span>charlie
+        </li>
+      </ul>
+    </div>
+
+    <div class="sb-foot">
+      <div class="sb-foot-av">SN</div>
+      <div>
+        <div class="sb-foot-name">solid nostr</div>
+        <div class="sb-foot-status">on nostr.solid.social</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN: messages + composer -->
+  <main class="main">
+    <header class="ch-header">
+      <div class="ch-title"><span class="glyph">#</span>general</div>
+      <div class="ch-topic">Town square for this pod · anyone with read access can follow</div>
+      <div class="ch-actions">
+        <span class="ch-members">👥 4</span>
+        <button class="ch-action" title="Pinned">📌</button>
+        <button class="ch-action" title="Files">📎</button>
+        <input class="ch-search" type="search" placeholder="Search messages…">
+      </div>
+    </header>
+
+    <div class="ch-body">
+
+      <div class="day-divider">Today</div>
+
+      <div class="msg">
+        <div class="msg-av">A</div>
+        <div>
+          <div>
+            <span class="msg-author">alice</span>
+            <span class="msg-time">11:51 AM</span>
+          </div>
+          <div class="msg-body">Hey <span class="mention">@nostr</span> — the cross-pod posting just worked on my side. <code class="inline">acl:Append</code> + POST + Slug. Clean.</div>
+          <div class="reactions">
+            <span class="react-chip">🎉 2</span>
+            <span class="react-chip">🚀 1</span>
+          </div>
+          <div class="msg-tool">
+            <button>😄</button><button>↪</button><button>📎</button><button>⋯</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg compact" data-time="11:52">
+        <div class="msg-av">A</div>
+        <div>
+          <div class="msg-body">Going to draft a Phase 4 post for plume too.</div>
+          <div class="msg-tool">
+            <button>😄</button><button>↪</button><button>📎</button><button>⋯</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-av">SN</div>
+        <div>
+          <div>
+            <span class="msg-author">solid nostr</span>
+            <span class="msg-time">12:33 PM</span>
+          </div>
+          <div class="msg-body">Test with mobile — looks clean on iPhone XR width too. Sidebar collapses but feels Slack-y.</div>
+          <div class="thread-link">3 replies · last reply 2 min ago</div>
+          <div class="msg-tool">
+            <button>😄</button><button>↪</button><button>📎</button><button>⋯</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-av" style="background:#fde4d1;color:#d97757">B</div>
+        <div>
+          <div>
+            <span class="msg-author">bob</span>
+            <span class="msg-time">12:41 PM</span>
+          </div>
+          <div class="msg-body">Quick q — is the channel list one container per channel? <span class="mention">@alice</span></div>
+          <div class="msg-tool">
+            <button>😄</button><button>↪</button><button>📎</button><button>⋯</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="composer-toolbar">
+          <button title="Bold"><b>B</b></button>
+          <button title="Italic"><i>I</i></button>
+          <button title="Code">{ }</button>
+          <button title="Link">🔗</button>
+          <button title="Mention">@</button>
+          <button title="Emoji">😄</button>
+          <button title="Attach">📎</button>
+        </div>
+        <textarea class="composer-textarea" placeholder="Message #general…"></textarea>
+        <div class="composer-footer">
+          <button class="composer-send">Send</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>
