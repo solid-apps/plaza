@@ -632,17 +632,30 @@ function bindScroll() {
 
 // --- identity / pod discovery ---
 
+let _topbarIdBound = false
 function renderIdentity() {
   const pill = document.getElementById('topbar-id')
   const id = meWebId()
   if (id) {
     let label
-    if (id.startsWith('http')) { try { label = new URL(id).host } catch { label = id } }
-    else label = id.length > 16 ? id.slice(0, 8) + '…' + id.slice(-4) : id
+    if (id.startsWith('http')) {
+      try { label = new URL(id).hostname.split('.')[0] + '.' } catch { label = id }
+    } else {
+      label = id.length > 12 ? id.slice(0, 6) + '…' + id.slice(-4) : id
+    }
     pill.textContent = label
-    pill.hidden = false
+    pill.title = 'Click to log out'
   } else {
-    pill.hidden = true
+    pill.textContent = 'Log in'
+    pill.title = 'Click to log in'
+  }
+  pill.hidden = false
+  if (!_topbarIdBound) {
+    _topbarIdBound = true
+    pill.addEventListener('click', () => {
+      if (meWebId()) window.xlogin?.logout?.()
+      else window.xlogin?.login?.()
+    })
   }
   // Refresh send-button enabled state
   const inp = document.getElementById('composer-input')
