@@ -173,6 +173,121 @@ async function ensurePlaza(plazaUrl) {
   if (!c.ok) throw new Error(`create plaza: ${c.status}`)
 }
 
+// --- "Open chat" toggle ---
+//
+// When the pod owner opens the plaza to guests, we write a WAC ACL on
+// /public/plaza/ granting:
+//   - owner: full Read/Write/Control
+//   - foaf:Agent (anyone): Read — visitors see the conversation
+//   - acl:AuthenticatedAgent: Append — logged-in users from any pod can
+//     ADD messages but can't modify or delete other people's
+//
+// Closing removes the ACL and the container falls back to its parent's
+// defaults (typically owner-only).
+
+const ACL_NS = 'http://www.w3.org/ns/auth/acl#'
+const FOAF_AGENT = 'http://xmlns.com/foaf/0.1/Agent'
+
+function plazaAclUrl() {
+  return state.plazaUrl + '.acl'
+}
+
+function isPlazaOwner() {
+  const me = meWebId()
+  if (!me) return false
+  const myPod = podFromWebId(me)
+  return !!myPod && myPod === state.podOrigin
+}
+
+async function chatIsOpen() {
+  try {
+    const r = await authFetch(plazaAclUrl(), { headers: { Accept: 'application/ld+json' } })
+    if (!r.ok) return false
+    const doc = await r.json()
+    const nodes = doc['@graph']
+      ? (Array.isArray(doc['@graph']) ? doc['@graph'] : [doc['@graph']])
+      : [doc]
+    return nodes.some(n => {
+      const types = [].concat(n['@type'] || [])
+      if (!types.some(t => t === 'acl:Authorization' || t === ACL_NS + 'Authorization')) return false
+      const cls = []
+        .concat(n['acl:agentClass'] || [])
+        .concat(n[ACL_NS + 'agentClass'] || [])
+        .map(x => typeof x === 'string' ? x : x?.['@id'])
+        .filter(Boolean)
+      const hasAuthClass = cls.some(c =>
+        c === 'acl:AuthenticatedAgent' || c === ACL_NS + 'AuthenticatedAgent')
+      if (!hasAuthClass) return false
+      const modes = []
+        .concat(n['acl:mode'] || [])
+        .concat(n[ACL_NS + 'mode'] || [])
+        .map(x => typeof x === 'string' ? x : x?.['@id'])
+        .filter(Boolean)
+      return modes.some(m =>
+        m === 'acl:Append' || m === ACL_NS + 'Append' ||
+        m === 'acl:Write'  || m === ACL_NS + 'Write')
+    })
+  } catch { return false }
+}
+
+async function openChat() {
+  if (!meWebId()) throw new Error('login required')
+  await ensurePlaza(state.plazaUrl)
+  const acl = {
+    '@context': { acl: ACL_NS },
+    '@graph': [
+      {
+        '@id': '#owner',
+        '@type': 'acl:Authorization',
+        'acl:accessTo': { '@id': state.plazaUrl },
+        'acl:default': { '@id': state.plazaUrl },
+        'acl:agent': { '@id': meWebId() },
+        'acl:mode': [
+          { '@id': 'acl:Read' },
+          { '@id': 'acl:Write' },
+          { '@id': 'acl:Control' }
+        ]
+      },
+      {
+        '@id': '#anon-read',
+        '@type': 'acl:Authorization',
+        'acl:accessTo': { '@id': state.plazaUrl },
+        'acl:default': { '@id': state.plazaUrl },
+        'acl:agentClass': { '@id': FOAF_AGENT },
+        'acl:mode': [{ '@id': 'acl:Read' }]
+      },
+      {
+        '@id': '#auth-append',
+        '@type': 'acl:Authorization',
+        'acl:accessTo': { '@id': state.plazaUrl },
+        'acl:default': { '@id': state.plazaUrl },
+        'acl:agentClass': { '@id': ACL_NS + 'AuthenticatedAgent' },
+        'acl:mode': [{ '@id': 'acl:Append' }]
+      }
+    ]
+  }
+  const r = await authFetch(plazaAclUrl(), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/ld+json' },
+    body: JSON.stringify(acl, null, 2)
+  })
+  if (!r.ok) {
+    let detail = ''
+    try { detail = (await r.text()).slice(0, 200) } catch {}
+    throw new Error(`open chat: ${r.status}${detail ? ' — ' + detail : ''}`)
+  }
+}
+
+async function closeChat() {
+  if (!meWebId()) throw new Error('login required')
+  const r = await authFetch(plazaAclUrl(), { method: 'DELETE' })
+  if (!r.ok && r.status !== 404) {
+    let detail = ''
+    try { detail = (await r.text()).slice(0, 200) } catch {}
+    throw new Error(`close chat: ${r.status}${detail ? ' — ' + detail : ''}`)
+  }
+}
+
 async function loadMessages() {
   const r = await authFetch(state.plazaUrl, { headers: { Accept: 'application/ld+json' } })
   if (!r.ok) {
@@ -324,7 +439,7 @@ function renderThread() {
       <div class="msg-body">
         <div class="msg-head">
           <a class="msg-author" href="${escapeHtml(msg.sender || '#')}" target="_blank" rel="noopener noreferrer"></a>
-          <span class="msg-time">${formatTime(msg.dateCreated)}</span>
+          <a class="msg-time" href="${escapeHtml(msg.url)}" target="_blank" rel="noopener noreferrer" title="Open the JSON-LD resource for this message">${formatTime(msg.dateCreated)}</a>
         </div>
         <div class="msg-text"></div>
       </div>
@@ -488,6 +603,54 @@ function renderIdentity() {
   document.getElementById('composer-send').disabled = !inp.value.trim() || !id
   // Re-evaluate empty-state copy when login changes
   updateEmptyState()
+  // Re-evaluate the owner-only chat toggle (visibility + current state)
+  renderChatToggle()
+}
+
+let _chatToggleBound = false
+async function renderChatToggle() {
+  const btn = document.getElementById('room-toggle')
+  if (!btn) return
+  if (!isPlazaOwner() || !state.plazaUrl) {
+    btn.hidden = true
+    return
+  }
+  btn.hidden = false
+  if (!_chatToggleBound) {
+    _chatToggleBound = true
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return
+      const currentlyOpen = btn.dataset.open === '1'
+      const next = !currentlyOpen
+      btn.disabled = true
+      btn.textContent = next ? 'Opening…' : 'Closing…'
+      try {
+        if (next) await openChat()
+        else await closeChat()
+        btn.dataset.open = next ? '1' : '0'
+        btn.textContent = next ? 'Chat: open' : 'Chat: closed'
+        showToast(next
+          ? 'Chat opened — logged-in visitors can now post.'
+          : 'Chat closed — only you can post here now.',
+          3500)
+      } catch (e) {
+        btn.textContent = currentlyOpen ? 'Chat: open' : 'Chat: closed'
+        showToast(e.message, 6000)
+      } finally {
+        btn.disabled = false
+      }
+    })
+  }
+  // Probe current state
+  btn.textContent = 'Chat: …'
+  try {
+    const open = await chatIsOpen()
+    btn.dataset.open = open ? '1' : '0'
+    btn.textContent = open ? 'Chat: open' : 'Chat: closed'
+  } catch {
+    btn.dataset.open = '0'
+    btn.textContent = 'Chat: closed'
+  }
 }
 
 function updateEmptyState() {
@@ -608,6 +771,9 @@ async function bootForPod(origin) {
   // Make sure empty-state copy interpolates the now-known host even if
   // there were zero messages and renderThread didn't recompute it.
   updateEmptyState()
+  // Show the owner-only chat-toggle button once we know which pod is
+  // being viewed (pre-bootForPod, isPlazaOwner() can't return true).
+  renderChatToggle()
   openSubscription()
 }
 
