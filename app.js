@@ -512,12 +512,28 @@ function watchLogin() {
   setInterval(() => {
     const now = meWebId()
     if (now !== last) {
-      const prevPod = podFromWebId(last)
-      const nextPod = podFromWebId(now)
       last = now
       renderIdentity()
-      // If logging in unlocks a pod that matches ?pod= (or our default), switch to it
-      if (now && !state.podOrigin) bootForPod(nextPod)
+      // When login state changes, the right pod target may have changed
+      // too. If the user is now logged in and their WebID-derived pod
+      // differs from where we're pointed (e.g. localhost from the cache),
+      // re-target onto the real pod. ?pod= still wins.
+      const hasExplicitPodParam = (() => {
+        try { return !!new URLSearchParams(location.search).get('pod') }
+        catch { return false }
+      })()
+      if (now && !hasExplicitPodParam) {
+        const ownPod = podFromWebId(now)
+        if (ownPod && ownPod !== state.podOrigin) {
+          try {
+            const cached = localStorage.getItem(LS_LAST_POD)
+            if (cached && cached !== ownPod) localStorage.removeItem(LS_LAST_POD)
+          } catch {}
+          bootForPod(ownPod)
+        }
+      } else if (now && !state.podOrigin) {
+        bootForPod(podFromWebId(now))
+      }
     }
   }, 400)
 }
@@ -553,20 +569,24 @@ function defaultPod() {
 }
 
 function pickPodOrigin() {
-  // Priority: ?pod= → localStorage → own WebID's pod → defaultPod()
+  // Priority: ?pod= → own WebID's pod (if logged in) → localStorage → defaultPod()
+  //
+  // WebID beats the cached value because the cache often holds a stale
+  // localhost from dev that breaks mixed-content in production (the page
+  // is HTTPS, the cached pod is HTTP localhost → ERR_BLOCKED_BY_CLIENT).
   try {
     const p = new URLSearchParams(location.search).get('pod')
     if (p) return p
-  } catch {}
-  try {
-    const cached = localStorage.getItem(LS_LAST_POD)
-    if (cached) return cached
   } catch {}
   const me = meWebId()
   if (me) {
     const own = podFromWebId(me)
     if (own) return own
   }
+  try {
+    const cached = localStorage.getItem(LS_LAST_POD)
+    if (cached) return cached
+  } catch {}
   return defaultPod()
 }
 
