@@ -233,8 +233,7 @@ async function sendMessage(text) {
   if (!meWebId()) throw new Error('login required to post')
   const ts = Date.now()
   const rand = Math.random().toString(36).slice(2, 8)
-  const filename = `${ts}-${rand}.jsonld`
-  const url = state.plazaUrl + filename
+  const slug = `${ts}-${rand}.jsonld`
   const doc = {
     '@context': { schema: SCHEMA },
     '@id': '',
@@ -243,16 +242,29 @@ async function sendMessage(text) {
     'schema:dateCreated': new Date(ts).toISOString(),
     'schema:sender': { '@id': meWebId() }
   }
-  const r = await authFetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/ld+json' },
+  // POST to the container (not PUT to a specific URL) so that
+  // acl:Append permission is enough — required for guests in any
+  // pod that has opened its plaza to authenticated visitors.
+  const r = await authFetch(state.plazaUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/ld+json',
+      'Slug': slug
+    },
     body: JSON.stringify(doc)
   })
   if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Couldn't post — the host of this plaza hasn't opened it to guests.")
+    }
     let detail = ''
     try { detail = (await r.text()).slice(0, 200) } catch {}
     throw new Error(`HTTP ${r.status}${detail ? ' — ' + detail : ''}`)
   }
+  const loc = r.headers.get('Location') || r.headers.get('location')
+  const url = loc
+    ? new URL(loc, state.plazaUrl).toString()
+    : state.plazaUrl + slug
   // Optimistic insert (subscription will eventually deliver same message; dedupe by URL)
   const local = parseMessage(doc, url)
   if (local) insertMessage(local)
