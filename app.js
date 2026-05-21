@@ -633,28 +633,33 @@ function bindScroll() {
 
 let _topbarIdBound = false
 function renderIdentity() {
-  const pill = document.getElementById('topbar-id')
+  // Update both the sidebar pill (desktop) and the channel-header pill
+  // (mobile) — same content, same click handler, separate DOM nodes.
+  const pills = document.querySelectorAll('.topbar-id')
   const id = meWebId()
+  let label, title
   if (id) {
-    let label
     if (id.startsWith('http')) {
       try { label = new URL(id).hostname.split('.')[0] + '.' } catch { label = id }
     } else {
       label = id.length > 12 ? id.slice(0, 6) + '…' + id.slice(-4) : id
     }
-    pill.textContent = label
-    pill.title = 'Click to log out'
+    title = 'Click to log out'
   } else {
-    pill.textContent = 'Log in'
-    pill.title = 'Click to log in'
+    label = 'Log in'
+    title = 'Click to log in'
   }
-  pill.hidden = false
+  pills.forEach(p => {
+    p.textContent = label
+    p.title = title
+    p.hidden = false
+  })
   if (!_topbarIdBound) {
     _topbarIdBound = true
-    pill.addEventListener('click', () => {
+    pills.forEach(p => p.addEventListener('click', () => {
       if (meWebId()) window.xlogin?.logout?.()
       else window.xlogin?.login?.()
-    })
+    }))
   }
   // Refresh send-button enabled state
   const inp = document.getElementById('composer-input')
